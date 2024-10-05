@@ -9,7 +9,8 @@ jobs:
     sync-upstream:
       name: Sync Upstream
       runs-on: ubuntu-latest
-      permissions: write
+      permissions: 
+        contents: write
 
       steps:
       - name: Checkout repository
