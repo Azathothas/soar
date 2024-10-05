@@ -40,7 +40,8 @@ jobs:
           #--------------#
           ##Main
           pushd "$(mktemp -d)" >/dev/null 2>&1 && git clone --filter="blob:none" --quiet "https://github.com/QaidVoid/soar" && cd "./soar"
-          rsync -achLv --remove-source-files --exclude="./.git/" --exclude="./.github/" "./" "${GITHUB_WORKSPACE}/main/"
+          rm -rfv "./.git/" "./.github/" 2>/dev/null
+          rsync -achLv --remove-source-files --exclude="./.git/**" --exclude="./.github/**" "./" "${GITHUB_WORKSPACE}/main/"
           popd >/dev/null 2>&1
         continue-on-error: true
 
