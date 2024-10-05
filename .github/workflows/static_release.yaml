@@ -1,9 +1,11 @@
 name: 🛍️ Sora 📦 (aarch64 || x86_64) Linux Build 📦🗄️
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 */1 * * *" #@every 1hrs
 env:
-  SKIP_X86_64: "NO" #YES--> SKip x86_64-Linux Build
-  SKIP_AARCH64: "NO" #YES--> SKip aarch64-Linux Build
+  #SKIP_X86_64: "NO" #YES--> SKip x86_64-Linux Build
+  #SKIP_AARCH64: "NO" #YES--> SKip aarch64-Linux Build
 #------------------------------------------------------------------------------------#
 jobs:
     sync-upstream:
@@ -40,8 +42,27 @@ jobs:
           #--------------#
           ##Main
           pushd "$(mktemp -d)" >/dev/null 2>&1 && git clone --filter="blob:none" --quiet "https://github.com/QaidVoid/soar" && cd "./soar"
-          rm -rfv "./.git/" "./.github/" 2>/dev/null
-          rsync -achLv --remove-source-files --exclude="./.git/**" --exclude="./.github/**" "./" "${GITHUB_WORKSPACE}/main/"
+          LATEST_COMMIT="$(git log -1 --pretty="%B" | head -n 1)" && export LATEST_COMMIT="${LATEST_COMMIT}"
+          PREV_COMMIT="$(cat "${GITHUB_WORKSPACE}/main/.github/LATEST.txt" 2>/dev/null)" && export PREV_COMMIT="${PREV_COMMIT}"
+          if [ "${LATEST_COMMIT}" == "${PREV_COMMIT}" ]; then
+            #Skip Build
+             export SKIP_X86_64="YES"
+             echo "SKIP_X86_64=${SKIP_X86_64}" >> "${GITHUB_ENV}"
+             export SKIP_AARCH64="YES"
+             echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_ENV}"
+          else
+            #Sync Repo
+             echo "${LATEST_COMMIT}" > "${GITHUB_WORKSPACE}/main/.github/LATEST.txt"
+             sed '/^$/d' -i "${GITHUB_WORKSPACE}/main/.github/LATEST.txt"
+             rm -rfv "./.git/" "./.githooks/" "./.github/" 2>/dev/null
+             rsync -achLv --remove-source-files --exclude="./.git/**" --exclude="./.github/**" "./" "${GITHUB_WORKSPACE}/main/"
+
+            #Trigger Build
+             export SKIP_X86_64="NO"
+             echo "SKIP_X86_64=${SKIP_X86_64}" >> "${GITHUB_ENV}"
+             export SKIP_AARCH64="NO"
+             echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_ENV}"
+          fi
           popd >/dev/null 2>&1
         continue-on-error: true
 
@@ -443,7 +464,7 @@ jobs:
           #UTC
           pushd "$(mktemp -d)" >/dev/null 2>&1
           git clone --filter "blob:none" --quiet "https://github.com/QaidVoid/soar" && cd "./soar"
-          L_COMMIT="$(git log -2 --pretty="%B" | sed 's/[[:space:]]\+/_/g' | tr -d '[:space:]' | head -n 1)" && export L_COMMIT="${L_COMMIT}"
+          L_COMMIT="$(git log -1 --pretty="%B" | sed 's/[[:space:]]\+/_/g' | tr -d '[:space:]' | head -n 1)" && export L_COMMIT="${L_COMMIT}"
           echo "L_COMMIT=${L_COMMIT}" >> "${GITHUB_ENV}"
           popd >/dev/null 2>&1
         continue-on-error: true
@@ -476,6 +497,20 @@ jobs:
           cat "/tmp/RELEASES/SHA256SUM.txt" >> "/tmp/RELEASE_NOTE.md"
           echo -e '```\n' >> "/tmp/RELEASE_NOTE.md"
           echo -e "" >> "/tmp/RELEASE_NOTE.md"
+        continue-on-error: true
+
+    #continuous
+      - name: Releaser
+        uses: softprops/action-gh-release@v2.0.8
+        with:
+          name: "sora-@latest"
+          tag_name: "continuous"
+          prerelease: true
+          draft: false
+          generate_release_notes: false
+          body_path: "/tmp/RELEASE_NOTE.md"
+          files: |
+            /tmp/RELEASES/*
         continue-on-error: true
 
     #Snapshot
