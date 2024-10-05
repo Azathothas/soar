@@ -27,8 +27,8 @@ pub async fn init() -> Result<()> {
         Commands::Fetch => {
             PackageRegistry::fetch().await?;
         }
-        Commands::Remove { packages } => todo!(),
-        Commands::Update { package } => todo!(),
+        Commands::Remove { packages: _ } => todo!(),
+        Commands::Update { package: _ } => todo!(),
         Commands::ListPackages => todo!(),
         Commands::Search { query } => {
             let pkg_query = parse_package_query(&query);
@@ -37,8 +37,8 @@ pub async fn init() -> Result<()> {
             if result.is_empty() {
                 println!("No packages found");
             } else {
-                result.iter().for_each(|data| {
-                    println!("{}", data);
+                result.iter().for_each(|pkg| {
+                    println!("[{}] {}: {}", pkg.root_path, pkg, pkg.package.description);
                 })
             }
         }
