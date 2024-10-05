@@ -92,7 +92,7 @@ jobs:
           commit_message: "♻️ Synced Soar 📦 <-- ${{ env.LATEST_COMMI_M }} ⌚"
 #------------------------------------------------------------------------------------#
     build-x86_64-Linux:
-      if: needs.sync-upstream.outputs.SKIP_X86_64 == "NO"
+      if: needs.sync-upstream.outputs.SKIP_X86_64 == 'NO'
       name: Build On (x86_64-Linux)
       runs-on: ubuntu-latest
       needs: [sync-upstream]
@@ -239,7 +239,7 @@ jobs:
           continue-on-error: true
 #------------------------------------------------------------------------------------#
     build-aarch64-Linux:
-        if: needs.sync-upstream.outputs.SKIP_AARCH64 == "NO"
+        if: needs.sync-upstream.outputs.SKIP_AARCH64 == 'NO'
         name: Build On (aarch64-Linux)
         runs-on: ubuntu-latest
         needs: [sync-upstream]
