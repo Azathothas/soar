@@ -228,15 +228,6 @@ jobs:
               name: ARTIFACTS-x86_64-Linux.tar
               path: |
                 /tmp/ARTIFACTS-x86_64-Linux.tar
-
-        - name: Skip
-          if: env.SKIP_X86_64 == "YES"
-          run: |
-            #presets
-            set -x ; set +e
-            #-------------#
-            echo -e "\n[+] Skipping x86_64-Linux Builds\n"
-          continue-on-error: true
 #------------------------------------------------------------------------------------#
     build-aarch64-Linux:
         if: needs.sync-upstream.outputs.SKIP_AARCH64 == 'NO'
@@ -372,15 +363,6 @@ jobs:
                 name: ARTIFACTS-aarch64-Linux.tar
                 path: |
                   /tmp/ARTIFACTS-aarch64-Linux.tar
-
-          - name: Skip
-            if: env.SKIP_AARCH64 == "YES"
-            run: |
-              #presets
-              set -x ; set +e
-              #-------------#
-              echo -e "\n[+] Skipping aarch64-Linux Builds\n"
-            continue-on-error: true
 #------------------------------------------------------------------------------------#
     create-release:
       name: Create ARTIFACTS Release
