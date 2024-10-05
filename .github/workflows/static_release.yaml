@@ -1,4 +1,4 @@
-name: 🛍️ Sora 📦 (aarch64 || x86_64) Linux Build 📦🗄️
+name: 🛍️ soar 📦 (aarch64 || x86_64) Linux Build 📦🗄️
 on:
   workflow_dispatch:
   schedule:
@@ -478,7 +478,7 @@ jobs:
       - name: Releaser
         uses: softprops/action-gh-release@v2.0.8
         with:
-          name: "sora-@latest"
+          name: "soar-@latest"
           tag_name: "continuous"
           prerelease: true
           draft: false
