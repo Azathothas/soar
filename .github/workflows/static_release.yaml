@@ -51,10 +51,10 @@ jobs:
           PREV_COMMIT="$(cat "${GITHUB_WORKSPACE}/main/.github/LATEST.txt" 2>/dev/null)" && export PREV_COMMIT="${PREV_COMMIT}"
           if [ "${LATEST_COMMIT}" == "${PREV_COMMIT}" ]; then
             #Skip Build
-             export SKIP_X86_64="YES"
+             export SKIP_X86_64='YES'
              echo "SKIP_X86_64=${SKIP_X86_64}" >> "${GITHUB_ENV}"
              echo "SKIP_X86_64=${SKIP_X86_64}" >> "${GITHUB_OUTPUT}"
-             export SKIP_AARCH64="YES"
+             export SKIP_AARCH64='YES'
              echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_ENV}"
              echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_OUTPUT}"
           else
@@ -64,10 +64,10 @@ jobs:
              rm -rfv "./.git/" "./.githooks/" "./.github/" 2>/dev/null
              rsync -achLv --remove-source-files --exclude="./.git/**" --exclude="./.github/**" "./" "${GITHUB_WORKSPACE}/main/"
             #Trigger Build
-             export SKIP_X86_64="NO"
+             export SKIP_X86_64='NO'
              echo "SKIP_X86_64=${SKIP_X86_64}" >> "${GITHUB_ENV}"
              echo "SKIP_X86_64=${SKIP_X86_64}" >> "${GITHUB_OUTPUT}"
-             export SKIP_AARCH64="NO"
+             export SKIP_AARCH64='NO'
              echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_ENV}"
              echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_OUTPUT}"
           fi
