@@ -111,7 +111,7 @@ impl PackageRegistry {
                 println!(
                     "[{}] {}: {} {}",
                     pkg.root_path,
-                    pkg.package.full_name(),
+                    pkg.package.full_name('/'),
                     pkg.package.description,
                     installed
                 );
@@ -155,7 +155,9 @@ impl PackageRegistry {
                 if let Some(installed) = installed_pkg {
                     print_data(
                         "Install Path",
-                        &pkg.package.get_install_path()?.to_string_lossy(),
+                        &pkg.package
+                            .get_install_path(&installed.checksum)
+                            .to_string_lossy(),
                     );
                     print_data(
                         "Install Date",
@@ -179,7 +181,7 @@ impl PackageRegistry {
         installed_guard.info(package_names, &self.storage)
     }
 
-    pub fn list(&self, root_path: Option<&str>) -> Result<()> {
+    pub async fn list(&self, root_path: Option<&str>) -> Result<()> {
         let root_path = match root_path {
             Some(rp) => match rp.to_lowercase().as_str() {
                 "base" => Ok(Some(RootPath::Base)),
@@ -191,17 +193,29 @@ impl PackageRegistry {
         }?;
 
         let packages = self.storage.list_packages(root_path);
-        packages.iter().for_each(|resolved_package| {
+        for resolved_package in packages {
             let package = resolved_package.package.clone();
+            let variant_prefix = package
+                .variant
+                .map(|variant| format!("{}-", variant))
+                .unwrap_or_default();
+            let installed_guard = self.installed_packages.lock().await;
+            let install_prefix = if installed_guard.is_installed(&resolved_package) {
+                "+"
+            } else {
+                "-"
+            };
             println!(
-                "- [{}] {}:{}-{} ({})",
+                "[{}] [{}] {}{}:{}-{} ({})",
+                install_prefix,
                 resolved_package.root_path,
+                variant_prefix,
                 package.name,
                 package.name,
                 package.version,
                 package.size
             );
-        });
+        }
         Ok(())
     }
 
@@ -211,6 +225,37 @@ impl PackageRegistry {
 
     pub async fn run(&self, command: &[String]) -> Result<()> {
         self.storage.run(command).await
+    }
+
+    pub async fn use_package(&self, package_name: &str) -> Result<()> {
+        let installed_guard = self.installed_packages.lock().await;
+        let resolved_package = self.storage.resolve_package(package_name)?;
+        let result = installed_guard.use_package(&resolved_package).await;
+        drop(installed_guard);
+        match result {
+            Ok(_) => {
+                println!("{} linked to binary path", package_name);
+                Ok(())
+            }
+            Err(e) => {
+                if e.to_string() == "NOT_INSTALLED" {
+                    println!("Package is not yet installed.");
+                    let package_name = resolved_package.package.full_name('/');
+                    self.storage
+                        .install_packages(
+                            &[package_name.to_owned()],
+                            true,
+                            false,
+                            self.installed_packages.clone(),
+                        )
+                        .await?;
+
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 }
 
@@ -224,7 +269,7 @@ pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedP
             "  [{}] [{}] {}: {}",
             i + 1,
             package.root_path,
-            package.package.full_name(),
+            package.package.full_name('/'),
             package.package.description
         );
     }
