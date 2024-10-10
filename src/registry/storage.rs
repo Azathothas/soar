@@ -19,7 +19,7 @@ use tokio::{
 use crate::{
     core::{
         config::CONFIG,
-        util::{build_path, format_bytes},
+        util::{build_path, format_bytes, get_platform},
     },
     registry::{
         installed::InstalledPackages,
@@ -28,7 +28,7 @@ use crate::{
 };
 
 use super::{
-    package::{Package, PackageQuery, RootPath},
+    package::{run::Runner, Package, PackageQuery, RootPath},
     select_package_variant,
 };
 
@@ -244,7 +244,7 @@ impl PackageStorage {
 
     pub async fn search(&self, query: &str) -> Vec<ResolvedPackage> {
         let query = parse_package_query(query);
-        let pkg_name = query.name.trim().to_lowercase();
+        let pkg_name = query.name.trim();
 
         let mut resolved_packages: Vec<(u32, Package, RootPath, String)> = Vec::new();
         for (repo_name, packages) in &self.repository {
@@ -271,7 +271,7 @@ impl PackageStorage {
                             let mut score = 0;
                             if pkg.name == pkg_name {
                                 score += 2;
-                            } else if pkg.name.contains(&pkg_name) {
+                            } else if pkg.name.contains(pkg_name) {
                                 score += 1;
                             } else {
                                 return None;
@@ -379,14 +379,43 @@ impl PackageStorage {
         fs::create_dir_all(&cache_dir).await?;
 
         let package_name = &command[0];
-        let resolved_pkg = self.resolve_package(package_name)?;
-
         let args = if command.len() > 1 {
             &command[1..]
         } else {
             &[]
         };
-        resolved_pkg.run(args, &cache_dir).await?;
+        let runner = if let Ok(resolved_pkg) = self.resolve_package(package_name) {
+            let package_path = cache_dir.join(&resolved_pkg.package.bin_name);
+            Runner::new(&resolved_pkg, package_path, args)
+        } else {
+            let query = parse_package_query(package_name);
+            let package_path = cache_dir.join(&query.name);
+            let mut resolved_pkg = ResolvedPackage::default();
+            resolved_pkg.package.name = query.name;
+            resolved_pkg.package.variant = query.variant;
+            resolved_pkg.root_path = query.root_path.unwrap_or_default();
+
+            // TODO: don't use just first repo
+            let platform = get_platform();
+            let repo = &CONFIG.repositories[0];
+            let base_url = format!("{}/{}", repo.url, platform);
+
+            let root_path = if resolved_pkg.root_path == RootPath::Base {
+                "/Baseutils"
+            } else {
+                ""
+            };
+            let download_url = format!(
+                "{}{}/{}",
+                base_url,
+                root_path,
+                resolved_pkg.package.full_name('/')
+            );
+            resolved_pkg.package.download_url = download_url;
+            Runner::new(&resolved_pkg, package_path, args)
+        };
+
+        runner.execute().await?;
 
         Ok(())
     }
