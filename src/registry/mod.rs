@@ -1,4 +1,4 @@
-use std::{fmt::Display, io::Write, path::PathBuf, sync::Arc};
+use std::{fmt::Display, io::Write, sync::Arc};
 
 use anyhow::Result;
 
@@ -182,13 +182,22 @@ impl PackageRegistry {
                     "Build Date",
                     package.build_date.clone().color(Color::BrightMagenta),
                 ),
-                ("Build Log", package.build_log.clone().color(Color::BrightBlue)),
+                (
+                    "Build Log",
+                    package.build_log.clone().color(Color::BrightBlue),
+                ),
                 (
                     "Build Script",
                     package.build_script.clone().color(Color::BrightBlue),
                 ),
-                ("Category", package.category.clone().color(Color::BrightCyan)),
-                ("Extra Bins", package.extra_bins.clone().color(Color::BrightBlack)),
+                (
+                    "Category",
+                    package.category.clone().color(Color::BrightCyan),
+                ),
+                (
+                    "Extra Bins",
+                    package.extra_bins.clone().color(Color::BrightBlack),
+                ),
             ];
 
             if let Some(installed) = installed_pkg {
@@ -198,16 +207,23 @@ impl PackageRegistry {
                         .clone()
                         .get_install_path(&installed.checksum)
                         .to_string_lossy()
-                        .to_string(),
+                        .to_string()
+                        .color(Color::BrightGreen),
                 ));
                 data.push((
                     "Install Date",
-                    installed.timestamp.format("%Y-%m-%d %H:%M:%S").to_string(),
+                    installed
+                        .timestamp
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string()
+                        .color(Color::BrightMagenta),
                 ));
             }
 
             data.iter().for_each(|(k, v)| {
-                if !v.is_empty() && v != "null" {
+                let value = strip_ansi_escapes::strip(v);
+                let value = String::from_utf8(value).unwrap();
+                if !value.is_empty() && value != "null" {
                     print_data(k, v);
                 }
             });
