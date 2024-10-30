@@ -63,7 +63,7 @@ jobs:
           #presets
           set +x ; set +e
           #-------------#
-          sudo docker run --detach --privileged --rm -v "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS:/SOAR_TESTS" --hostname "Qaid" -u "soar" "soar-vhs"
+          sudo docker run --detach --privileged --rm -v "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS:/SOAR_TESTS" --hostname "Qaid" -u "soar" "soar-vhs" tail -f "/dev/null"
         continue-on-error: true
 
       - name: Version (soar --version)
