@@ -5,7 +5,7 @@ on:
   #push:
   workflow_dispatch:
   schedule:
-    - cron: "0 0/1 * * *"
+    - cron: "0 */12 * * *" #Every 12 Hrs
 
 env:
   RCLONE_CF_R2_PUB: "${{ secrets.RCLONE_CF_R2_PUB }}"
@@ -24,6 +24,14 @@ jobs:
           path: main
           filter: "blob:none"
           
+      - name: Install Addons
+        run: |
+          #presets
+          set +x ; set +e
+          #-------------#
+          bash <(curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/install_dev_tools.sh")
+        continue-on-error: true
+
       - name: Setup Env
         run: |
           #Presets
@@ -49,21 +57,14 @@ jobs:
           USER_AGENT="$(curl -qfsSL 'https://pub.ajam.dev/repos/Azathothas/Wordlists/Misc/User-Agents/ua_chrome_macos_latest.txt')" && export USER_AGENT="${USER_AGENT}"
           echo "USER_AGENT=${USER_AGENT}" >> "${GITHUB_ENV}"
         continue-on-error: true
-        
-      - name: Install Addons
-        run: |
-          #presets
-          set +x ; set +e
-          #-------------#
-          bash <(curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/install_dev_tools.sh")
-        continue-on-error: true
 
       - name: Run soar-vhs
         run: |
           #presets
           set +x ; set +e
           #-------------#
-          sudo docker run --detach --privileged --rm -v "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS:/SOAR_TESTS" --hostname "Qaid" -u "soar" "soar-vhs" tail -f "/dev/null"
+          docker stop "soar-vhs" 2>/dev/null ; docker rm "soar-vhs"
+          sudo docker run --name "soar-vhs" --detach --privileged --rm -v "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS:/SOAR_TESTS" --hostname "Qaid" -u "soar" "soar-vhs" tail -f "/dev/null"
         continue-on-error: true
 
       - name: Version (soar --version)
