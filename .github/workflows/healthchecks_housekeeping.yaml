@@ -1,0 +1,117 @@
+name: 🐧🧹 HealthChecks 🖳🗑️
+#MAX_RUNTIME: 02 Minutes */10 * * * * 
+
+on:
+  #push:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0/1 * * *"
+
+env:
+  RCLONE_CF_R2_PUB: "${{ secrets.RCLONE_CF_R2_PUB }}"
+#------------------------------------------------------------------------------------#
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: main
+          filter: "blob:none"
+          
+      - name: Setup Env
+        run: |
+          #Presets
+          set +x ; set +e
+          #--------------#
+          #tmp
+          SYSTMP="$(dirname $(mktemp -u))" && export SYSTMP="${SYSTMP}"
+          echo "SYSTMP=${SYSTMP}" >> "$GITHUB_ENV"
+          #GH
+          rm -rvf "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS" 2>/dev/null
+          mkdir -pv "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS"
+          pushd "$($TMPDIRS)" >/dev/null 2>&1
+           curl -qfsSL "https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/dockerfiles/soar_vhs.Dockerfile" -o "./Dockerfile"
+           docker build --no-cache --tag "soar-vhs" --file "./Dockerfile" "."
+          popd >/dev/null 2>&1
+          #-------------#
+          ##Setup rClone
+          mkdir -p "$HOME/.config/rclone"
+          echo "${{ secrets.RCLONE_CF_R2_PUB }}" > "$HOME/.config/rclone/rclone.conf"
+          export RCLONE_STATS="120s" ; echo "RCLONE_STATS=${RCLONE_STATS}" >> "${GITHUB_ENV}"
+          #-------------#
+          ##User-Agent
+          USER_AGENT="$(curl -qfsSL 'https://pub.ajam.dev/repos/Azathothas/Wordlists/Misc/User-Agents/ua_chrome_macos_latest.txt')" && export USER_AGENT="${USER_AGENT}"
+          echo "USER_AGENT=${USER_AGENT}" >> "${GITHUB_ENV}"
+        continue-on-error: true
+        
+      - name: Install Addons
+        run: |
+          #presets
+          set +x ; set +e
+          #-------------#
+          bash <(curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/install_dev_tools.sh")
+        continue-on-error: true
+
+      - name: Run soar-vhs
+        run: |
+          #presets
+          set +x ; set +e
+          #-------------#
+          sudo docker run --detach --privileged --rm -v "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS:/SOAR_TESTS" --hostname "Qaid" -u "soar" "soar-vhs"
+        continue-on-error: true
+
+      - name: Version (soar --version)
+        run: |
+          #presets
+          set +x ; set +e
+          #-------------#
+          sudo docker exec -u "soar" "soar-vhs" bash -l -c '
+          set +e ; set -x
+          mkdir -pv "/soar" ; cd "/soar"
+          curl -qfsSL "https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/vhs/version.tape" -o "/soar/version.tape"
+          vhs "/soar/version.tape" --output "/SOAR_TESTS/version.gif"
+          '
+          sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
+          sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
+          file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif"
+        continue-on-error: true
+
+      - name: Git Pull
+        run: |
+          cd "${GITHUB_WORKSPACE}/main" && git pull origin main
+        continue-on-error: true
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          repository: ./main        
+          commit_user_name: Azathothas
+          commit_user_email: AjamX101@gmail.com
+          commit_message: "‎‎‏‏‎ ‎"
+          #push_options: '--force'
+        continue-on-error: true
+#------------------------------------------------------------------------------------#
+      - name: rClone BackUp Repo ("https://pub.ajam.dev/repos/${GITHUB_REPOSITORY}")
+        run: |
+          # Presets
+          set -x ; set +e
+          #--------------#
+          #touch "${HOME}/.rclone.conf"
+          echo "${{ secrets.RCLONE_CF_R2_PUB }}" > "${HOME}/.rclone.conf"
+          #chdir to Repo
+          cd "${GITHUB_WORKSPACE}/main"
+          #Git pull
+          git pull origin main --no-edit 2>/dev/null
+          #Del Bloat
+          rm -rf "$(pwd)/.git"
+          #Upload to Pub
+          echo -e "[+] Syncing ${GITHUB_REPOSITORY} to pub.ajam.dev/repos/${GITHUB_REPOSITORY} \n"
+          rclone sync "." "r2:/pub/repos/${GITHUB_REPOSITORY}/" --user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) obsidian/1.5.3 Chrome/114.0.5735.289 Electron/25.8.1 Safari/537.36" --buffer-size="100M" --s3-upload-concurrency="500" --s3-chunk-size="100M" --multi-thread-streams="500" --checkers="2000" --transfers="1000" --check-first --checksum --copy-links --fast-list --progress
+        continue-on-error: true
+#EOF
+#------------------------------------------------------------------------------------#

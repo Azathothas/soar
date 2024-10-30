@@ -1,5 +1,5 @@
 ##Prints Version: soar --version
-##SELF: 
+##SELF: https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/vhs/version.tape
 #Setup ENV
 Output version.gif
 Require soar
