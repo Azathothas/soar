@@ -32,6 +32,14 @@ jobs:
           bash <(curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/install_dev_tools.sh")
         continue-on-error: true
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        continue-on-error: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        continue-on-error: true
+
       - name: Setup Env
         run: |
           #Presets
@@ -75,6 +83,8 @@ jobs:
           sudo docker exec -u "soar" "soar-vhs" bash -l -c '
           set +e ; set -x
           mkdir -pv "/soar" ; cd "/soar"
+          sudo chown -R "$(whoami):$(whoami)" "/SOAR_TESTS"
+          sudo chmod -R 755 "/SOAR_TESTS"
           curl -qfsSL "https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/vhs/version.tape" -o "/soar/version.tape"
           vhs "/soar/version.tape" --output "/SOAR_TESTS/version.gif"
           '
