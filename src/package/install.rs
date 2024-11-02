@@ -1,401 +1,329 @@
 use std::{
-    fs::Permissions,
-    io::Write,
+    fs::{File, Permissions},
+    io::{BufReader, Write},
     os::unix::fs::PermissionsExt,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::Arc,
 };
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
-use tokio::{
-    fs::OpenOptions,
-    io::AsyncWriteExt,
-    sync::{Mutex, Semaphore},
-};
+use tokio::{fs, io::AsyncWriteExt, sync::Mutex};
 
-use crate::core::{
-    config::CONFIG,
-    constant::{PAPER, TRUCK},
-    util::parse_size,
+use crate::{
+    core::{
+        color::{Color, ColorExt},
+        constant::{BIN_PATH, PACKAGES_PATH},
+        file::{get_file_type, FileType},
+        util::{calculate_checksum, format_bytes, validate_checksum},
+    },
+    registry::installed::InstalledPackages,
+    warn,
 };
 
 use super::{
-    download_tracker::DownloadTracker,
-    install_tracker::InstalledPackages,
-    registry::{Package, PackageRegistry, ResolvedPackage},
-    util::{set_error, setup_symlink, verify_checksum},
+    appimage::{integrate_appimage, integrate_using_remote_files, setup_portable_dir},
+    ResolvedPackage,
 };
 
-struct InstallContext {
+pub struct Installer {
+    resolved_package: ResolvedPackage,
     install_path: PathBuf,
-    temp_file_path: PathBuf,
+    temp_path: PathBuf,
 }
 
-impl InstallContext {
-    async fn new(package: &ResolvedPackage) -> Result<Self> {
-        let install_path = package.install_path()?;
+impl Installer {
+    pub fn new(package: &ResolvedPackage, install_path: PathBuf) -> Self {
+        let temp_path = PACKAGES_PATH
+            .join("tmp")
+            .join(package.package.full_name('-'))
+            .with_extension("part");
+        Self {
+            resolved_package: package.to_owned(),
+            install_path,
+            temp_path,
+        }
+    }
 
-        if let Some(parent) = install_path.parent() {
-            tokio::fs::create_dir_all(parent).await.context(format!(
-                "Failed to create install directory {:#?}",
-                install_path
+    pub async fn execute(
+        &mut self,
+        idx: usize,
+        total: usize,
+        installed_packages: Arc<Mutex<InstalledPackages>>,
+        portable: Option<String>,
+        portable_home: Option<String>,
+        portable_config: Option<String>,
+        multi_progress: Arc<MultiProgress>,
+        yes: bool,
+    ) -> Result<()> {
+        let package = &self.resolved_package.package;
+
+        let prefix = format!(
+            "[{}/{}] {}",
+            (idx + 1).color(Color::Green),
+            total.color(Color::Cyan),
+            package.full_name('/').color(Color::BrightBlue)
+        );
+
+        if let Some(parent) = self.temp_path.parent() {
+            fs::create_dir_all(parent).await.context(format!(
+                "{}: Failed to create temp directory {}",
+                prefix,
+                self.temp_path.to_string_lossy().color(Color::Blue)
             ))?;
         }
 
-        Ok(Self {
-            temp_file_path: install_path.with_extension("part"),
-            install_path,
-        })
-    }
-}
-
-impl PackageRegistry {
-    pub async fn install_packages(&self, package_names: &[String], force: bool) -> Result<()> {
-        let packages = self.parse_packages_from_names(package_names)?;
-        let installed_packages = Arc::new(Mutex::new(InstalledPackages::new().await?));
-
-        if CONFIG.parallel.unwrap_or_default() {
-            self.install_parallel(&packages, force, installed_packages)
-                .await
-        } else {
-            self.install_sequential(&packages, force, installed_packages)
-                .await
-        }
-    }
-
-    // HACK: Use the existing install process. To be updated on next refactor
-    pub async fn update_packages(&self, packages: &[ResolvedPackage], force: bool) -> Result<()> {
-        let installed_packages = Arc::new(Mutex::new(InstalledPackages::new().await?));
-
-        if CONFIG.parallel.unwrap_or_default() {
-            self.install_parallel(packages, force, installed_packages)
-                .await
-        } else {
-            self.install_sequential(packages, force, installed_packages)
-                .await
-        }
-    }
-
-    async fn install_sequential(
-        &self,
-        packages: &[ResolvedPackage],
-        force: bool,
-        installed_packages: Arc<Mutex<InstalledPackages>>,
-    ) -> Result<()> {
-        let total_packages = packages.len();
-        let total_bytes = self.calculate_total_bytes(packages).await;
-
-        let multi_progress = MultiProgress::new();
-        let tracker = DownloadTracker::new(total_packages, total_bytes, &multi_progress);
-
-        for (index, package) in packages.iter().enumerate() {
-            self.process_single_package(
-                package,
-                force,
-                index,
-                total_packages,
-                &multi_progress,
-                tracker.clone(),
-                installed_packages.clone(),
-            )
-            .await?;
-        }
-
-        tracker.finish_install().await;
-        Ok(())
-    }
-
-    async fn install_parallel(
-        &self,
-        packages: &[ResolvedPackage],
-        force: bool,
-        installed_packages: Arc<Mutex<InstalledPackages>>,
-    ) -> Result<()> {
-        let total_packages = packages.len();
-        let total_bytes = self.calculate_total_bytes(packages).await;
-
-        let registry = Arc::new(self.clone());
-        let semaphore = Arc::new(Semaphore::new(CONFIG.parallel_limit.unwrap_or(2) as usize));
-        let multi_progress = Arc::new(MultiProgress::new());
-        let tracker = DownloadTracker::new(total_packages, total_bytes, &multi_progress);
-
-        let mut handles = Vec::new();
-
-        for (index, package) in packages.iter().enumerate() {
-            let permit = semaphore.clone().acquire_owned().await.unwrap();
-            let registry = registry.clone();
-            let multi_progress = multi_progress.clone();
-            let tracker = tracker.clone();
-            let package = package.clone();
-            let installed_packages = installed_packages.clone();
-
-            let handle = tokio::spawn(async move {
-                let result = registry
-                    .process_single_package(
-                        &package,
-                        force,
-                        index,
-                        total_packages,
-                        &multi_progress,
-                        tracker,
-                        installed_packages,
-                    )
-                    .await;
-                drop(permit);
-                result
-            });
-
-            handles.push(handle);
-        }
-
-        for handle in handles {
-            handle.await??;
-        }
-
-        tracker.finish_install().await;
-        Ok(())
-    }
-
-    async fn process_single_package(
-        &self,
-        package: &ResolvedPackage,
-        force: bool,
-        index: usize,
-        total: usize,
-        multi_progress: &MultiProgress,
-        tracker: Arc<DownloadTracker>,
-        installed_packages: Arc<Mutex<InstalledPackages>>,
-    ) -> Result<()> {
-        let ctx = InstallContext::new(package).await?;
-
-        if !force && self.check_existing_installation(&ctx, package).await? {
-            return Ok(());
-        }
-
-        self.download_and_install_package(
-            &ctx,
-            package,
-            multi_progress,
-            tracker,
-            index,
-            total,
-            installed_packages,
-        )
-        .await?;
-        if let Err(e) = setup_symlink(&ctx.install_path, package).await {
-            set_error(multi_progress, &e.to_string());
-        };
-        Ok(())
-    }
-
-    async fn calculate_total_bytes(&self, packages: &[ResolvedPackage]) -> u64 {
-        packages
-            .iter()
-            .filter_map(|pkg| parse_size(&pkg.package.size))
-            .sum()
-    }
-
-    async fn check_existing_installation(
-        &self,
-        ctx: &InstallContext,
-        package: &ResolvedPackage,
-    ) -> Result<bool> {
-        if ctx.install_path.exists() && verify_checksum(&ctx.install_path, &package.package).await?
-        {
-            println!("  {PAPER}Package {} is already installed", package);
-            return Ok(true);
-        }
-
-        if ctx.temp_file_path.exists()
-            && verify_checksum(&ctx.temp_file_path, &package.package).await?
-        {
-            println!("Package {} is already downloaded. Installing...", package);
-            tokio::fs::rename(&ctx.temp_file_path, &ctx.install_path).await?;
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    async fn download_and_install_package(
-        &self,
-        ctx: &InstallContext,
-        resolved_package: &ResolvedPackage,
-        multi_progress: &MultiProgress,
-        tracker: Arc<DownloadTracker>,
-        index: usize,
-        total: usize,
-        installed_packages: Arc<Mutex<InstalledPackages>>,
-    ) -> Result<()> {
-        let package = &resolved_package.package;
+        let temp_path = &self.temp_path;
         let client = reqwest::Client::new();
-        let downloaded_bytes = self.get_downloaded_bytes(&ctx.temp_file_path).await?;
-
-        let response = self
-            .make_request(&client, package, downloaded_bytes)
-            .await?;
-
-        let progress_bar = self.create_progress_bar(
-            multi_progress,
-            index,
-            total,
-            resolved_package,
-            tracker.get_progress_bar(),
-        );
-        let total_bytes = response.content_length().unwrap_or(0) + downloaded_bytes;
-        progress_bar.set_position(downloaded_bytes);
-        progress_bar.set_length(total_bytes);
-
-        let mut file = self.open_temp_file(&ctx.temp_file_path).await?;
-        let mut stream = response.bytes_stream();
-        let mut current_bytes = downloaded_bytes;
-
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.context("Failed to read chunk")?;
-            current_bytes += chunk.len() as u64;
-            progress_bar.set_position(current_bytes);
-            tracker.add_downloaded_bytes(chunk.len() as u64).await;
-            file.write_all(&chunk).await?;
-        }
-
-        file.flush().await?;
-        self.finalize_installation(
-            ctx,
-            resolved_package,
-            multi_progress,
-            &progress_bar,
-            total_bytes,
-        )
-        .await?;
-
-        {
-            let mut installed_packages = installed_packages.lock().await;
-            installed_packages
-                .register_package(resolved_package)
-                .await?;
-        }
-
-        tracker.mark_package_completed();
-        Ok(())
-    }
-
-    async fn get_downloaded_bytes(&self, path: &Path) -> Result<u64> {
-        if path.exists() {
-            let meta = tokio::fs::metadata(path).await?;
-            Ok(meta.len())
+        let downloaded_bytes = if temp_path.exists() {
+            let meta = fs::metadata(&temp_path).await?;
+            meta.len()
         } else {
-            Ok(0)
-        }
-    }
+            0
+        };
 
-    async fn make_request(
-        &self,
-        client: &reqwest::Client,
-        package: &Package,
-        downloaded_bytes: u64,
-    ) -> Result<reqwest::Response> {
         let response = client
             .get(&package.download_url)
             .header("Range", format!("bytes={}-", downloaded_bytes))
             .send()
             .await
-            .context(format!("Failed to download package {}", package.name))?;
+            .context(format!("{}: Failed to download package", prefix))?;
+        let total_size = response
+            .content_length()
+            .map(|cl| cl + downloaded_bytes)
+            .unwrap_or(0);
+
+        let download_progress = multi_progress.insert_from_back(1, ProgressBar::new(0));
+        download_progress.set_style(
+            ProgressStyle::with_template(
+                "{msg:48} [{wide_bar:.green/white}] {speed:14} {computed_bytes:22}",
+            )
+            .unwrap()
+            .with_key(
+                "computed_bytes",
+                |state: &ProgressState, w: &mut dyn std::fmt::Write| {
+                    write!(
+                        w,
+                        "{}/{}",
+                        format_bytes(state.pos()),
+                        format_bytes(state.len().unwrap_or_default())
+                    )
+                    .unwrap()
+                },
+            )
+            .with_key(
+                "speed",
+                |state: &ProgressState, w: &mut dyn std::fmt::Write| {
+                    let pos = state.pos() as f64;
+                    let elapsed = state.elapsed().as_secs_f64();
+                    let speed = if elapsed > 0.0 {
+                        (pos / elapsed) as u64
+                    } else {
+                        0
+                    };
+                    write!(w, "{}/s", format_bytes(speed)).unwrap()
+                },
+            )
+            .progress_chars("━━"),
+        );
+
+        download_progress.set_length(total_size);
+        download_progress.set_message(prefix.clone());
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Download failed: {:?}", response.status(),));
+            return Err(anyhow::anyhow!(
+                "{} Download failed {:?}",
+                prefix,
+                response.status().color(Color::Red),
+            ));
         }
 
-        Ok(response)
-    }
+        {
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(true)
+                .open(&temp_path)
+                .await
+                .context(format!("{}: Failed to open temp file for writing", prefix))?;
+            let mut stream = response.bytes_stream();
 
-    async fn open_temp_file(&self, path: &Path) -> Result<tokio::fs::File> {
-        OpenOptions::new()
-            .write(true)
-            .create(true)
-            .append(true)
-            .open(path)
-            .await
-            .context("Failed to open temp file for writing")
-    }
-
-    async fn finalize_installation(
-        &self,
-        ctx: &InstallContext,
-        resolved_package: &ResolvedPackage,
-        multi_progress: &MultiProgress,
-        progress_bar: &ProgressBar,
-        total_bytes: u64,
-    ) -> Result<()> {
-        let ResolvedPackage { package, .. } = resolved_package;
-
-        progress_bar.set_position(total_bytes);
-        progress_bar.finish();
-
-        match package.bsum == "null" {
-            true => {
-                set_error(
-                    multi_progress,
-                    &format!(
-                        "Missing checksum for {}. Installing anyway.",
-                        resolved_package
-                    ),
-                );
-                self.save_file(ctx).await?;
+            while let Some(chunk) = stream.next().await {
+                let chunk = chunk.context(format!("{}: Failed to read chunk", prefix))?;
+                file.write_all(&chunk).await?;
+                download_progress.inc(chunk.len() as u64);
             }
-            false => {
-                if verify_checksum(&ctx.temp_file_path, package).await? {
-                    self.save_file(ctx).await?;
+            file.flush().await?;
+        }
+
+        download_progress.finish();
+
+        if package.bsum == "null" {
+            warn!(
+                "Missing checksum for {}. Installing anyway.",
+                package.full_name('/').color(Color::BrightBlue)
+            );
+        } else {
+            let result = validate_checksum(&package.bsum, &self.temp_path).await;
+            if result.is_err() {
+                if yes {
+                    warn!("Checksum verification failed. Installing anyway.");
                 } else {
-                    eprint!("Checksum verification failed for {}. Do you want to remove the file? (y/n): ", resolved_package);
+                    eprint!(
+                        "\n{}: Checksum verification failed. Do you want to remove the package? (y/n): ",
+                        prefix
+                    );
                     std::io::stdout().flush()?;
 
                     let mut response = String::new();
                     std::io::stdin().read_line(&mut response)?;
 
                     if response.trim().eq_ignore_ascii_case("y") {
-                        tokio::fs::remove_file(&ctx.temp_file_path).await?;
+                        tokio::fs::remove_file(&temp_path).await?;
+                        return Err(anyhow::anyhow!("Checksum verification failed."));
                     }
-                    std::process::exit(-1);
                 }
             }
+        }
+        let checksum = calculate_checksum(temp_path).await?;
+
+        self.install_path = package.get_install_path(&checksum);
+        if let Some(parent) = self.install_path.parent() {
+            fs::create_dir_all(parent).await.context(format!(
+                "{}: Failed to create install directory {}",
+                prefix,
+                self.install_path.to_string_lossy().color(Color::Blue)
+            ))?;
+        }
+
+        self.save_file().await?;
+        self.symlink_bin().await?;
+
+        let mut file = BufReader::new(File::open(&self.install_path)?);
+        let file_type = get_file_type(&mut file);
+
+        match file_type {
+            FileType::AppImage => {
+                if integrate_appimage(&mut file, package, &self.install_path)
+                    .await
+                    .is_ok()
+                {
+                    setup_portable_dir(
+                        &package.bin_name,
+                        &self.install_path,
+                        portable,
+                        portable_home,
+                        portable_config,
+                    )
+                    .await?;
+                } else {
+                    warn!("{}: Failed to integrate AppImage", prefix);
+                };
+            }
+            FileType::FlatImage => {
+                if integrate_using_remote_files(package, &self.install_path)
+                    .await
+                    .is_err()
+                {
+                    warn!("{}: Failed to integrate FlatImage", prefix);
+                };
+            }
+            _ => {}
+        }
+
+        {
+            let mut installed_packages = installed_packages.lock().await;
+            installed_packages
+                .register_package(&self.resolved_package, &checksum)
+                .await?;
+        }
+
+        let installed_progress = multi_progress.insert_from_back(1, ProgressBar::new(0));
+        installed_progress.set_style(
+            ProgressStyle::default_bar()
+                .template("{msg}")
+                .unwrap()
+                .progress_chars("##-"),
+        );
+        installed_progress.finish_with_message(format!(
+            "[{}/{}] Installed {}",
+            (idx + 1).color(Color::Green),
+            total.color(Color::Cyan),
+            package.full_name('/').color(Color::Blue)
+        ));
+
+        if !package.note.is_empty() {
+            println!(
+                "{}: [{}] {}",
+                prefix,
+                "Note".color(Color::Magenta),
+                package
+                    .note
+                    .replace("<br>", "\n     ")
+                    .color(Color::BrightYellow)
+            );
         }
 
         Ok(())
     }
 
-    fn create_progress_bar(
-        &self,
-        multi_progress: &MultiProgress,
-        index: usize,
-        total: usize,
-        resolved_package: &ResolvedPackage,
-        total_progress_bar: &ProgressBar,
-    ) -> ProgressBar {
-        let pb = multi_progress.insert_before(total_progress_bar, ProgressBar::new(0));
-        pb.set_style(ProgressStyle::with_template(
-            "{spinner} {msg} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})"
-        ).unwrap().with_key("eta", |state: &ProgressState, w: &mut dyn std::fmt::Write|
-            write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
-        .progress_chars("#-"));
-        pb.set_message(format!(
-            "{TRUCK}[{}/{}] [{}] {}",
-            index + 1,
-            total,
-            resolved_package.root_path,
-            resolved_package
-        ));
-        pb
+    async fn save_file(&self) -> Result<()> {
+        let install_path = &self.install_path;
+        let temp_path = &self.temp_path;
+        if install_path.exists() {
+            tokio::fs::remove_file(&install_path).await?;
+        }
+        tokio::fs::rename(&temp_path, &install_path).await?;
+        tokio::fs::set_permissions(&install_path, Permissions::from_mode(0o755)).await?;
+        xattr::set(install_path, "user.managed_by", b"soar")?;
+
+        Ok(())
     }
 
-    async fn save_file(&self, ctx: &InstallContext) -> Result<()> {
-        if ctx.install_path.exists() {
-            tokio::fs::remove_file(&ctx.install_path).await?;
+    async fn symlink_bin(&self) -> Result<()> {
+        let package = &self.resolved_package.package;
+        let install_path = &self.install_path;
+        let symlink_path = &BIN_PATH.join(&package.bin_name);
+        if symlink_path.exists() {
+            if let Ok(link) = symlink_path.read_link() {
+                if &link != install_path {
+                    if let Ok(parent) = link.strip_prefix(&*PACKAGES_PATH) {
+                        let package_name =
+                            parent.parent().unwrap().to_string_lossy()[9..].replacen("-", "/", 1);
+
+                        if package_name == package.full_name('-') {
+                            fs::remove_dir_all(link.parent().unwrap()).await?;
+                        } else {
+                            warn!(
+                                "The package {} owns the binary {}",
+                                package_name, &package.bin_name
+                            );
+                            print!(
+                                "Do you want to switch to {} (y/N)? ",
+                                package.full_name('/').color(Color::Blue)
+                            );
+                            std::io::stdout().flush()?;
+
+                            let mut response = String::new();
+                            std::io::stdin().read_line(&mut response)?;
+
+                            if !response.trim().eq_ignore_ascii_case("y") {
+                                return Ok(());
+                            }
+                        }
+                    };
+                }
+            }
+            fs::remove_file(symlink_path).await?;
         }
-        tokio::fs::rename(&ctx.temp_file_path, &ctx.install_path).await?;
-        tokio::fs::set_permissions(&ctx.install_path, Permissions::from_mode(0o755)).await?;
-        xattr::set(&ctx.install_path, "user.owner", b"soar")?;
+        fs::symlink(&install_path, &symlink_path)
+            .await
+            .context(format!(
+                "Failed to link {} to {}",
+                install_path.to_string_lossy(),
+                symlink_path.to_string_lossy()
+            ))?;
 
         Ok(())
     }
