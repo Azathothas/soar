@@ -4,7 +4,7 @@ A fast, modern package manager for Linux systems.
 
 [![Under Development](https://img.shields.io/badge/status-under%20development-orange)](https://github.com/QaidVoid/soar)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
+[![Documentation](https://img.shields.io/badge/docs-soar.qaidvoid.dev-blue)](https://soar.qaidvoid.dev)
 
 > **Note**: Soar is currently under rapid development.
 
