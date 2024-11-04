@@ -3,11 +3,11 @@
 
 ### 🐛 Bug Fixes
 
-- *(sigpipe)* Terminate if pipe is broken - ([f54362d](https://github.com/QaidVoid/soar/commit/f54362db37f5b1470696ce02bcf34a221148cdfe))
+- *(sigpipe)* Terminate if pipe is broken - ([bc50076](https://github.com/QaidVoid/soar/commit/bc50076f6cee0101a927f40757c74ed0067bf0ee))
 
 ### ⚙️ Miscellaneous Tasks
 
-- *(cargo)* Update package name - ([4f54a57](https://github.com/QaidVoid/soar/commit/4f54a5700eb9433a8d1522295ea509be5288cab3))
+- *(cargo)* Update package name - ([381dd66](https://github.com/QaidVoid/soar/commit/381dd66c80842debd78226e752ee474c5a2ae9d8))
 
 
 ## [0.4.0](https://github.com/QaidVoid/soar/compare/v0.3.1..v0.4.0) - 2024-11-04
@@ -40,7 +40,7 @@
 ### 📚 Documentation
 
 - *(README)* Fix installation instructions - ([b2fc746](https://github.com/QaidVoid/soar/commit/b2fc74664da9463a82d1f445d1560c28d7134f66))
-- *(mdbook)* Initialize documentation - ([6fa129b](https://github.com/QaidVoid/soar/commit/6fa129b5107ad7bd6402399e251a99ac0997301a))
+- *(readme)* Update README - ([2fb53cc](https://github.com/QaidVoid/soar/commit/2fb53cc42378d17c64388a7b780298ab82de103e))
 
 ### ⚙️ Miscellaneous Tasks
 
