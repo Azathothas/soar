@@ -1,26 +1,49 @@
 use std::{
-    env, mem,
+    env,
+    ffi::CStr,
+    io::Write,
+    mem,
     path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use indicatif::{ProgressState, ProgressStyle};
-use libc::{ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
+use libc::{geteuid, getpwuid, ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
 use termion::cursor;
 use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
+use crate::warn;
+
 use super::{
     color::{Color, ColorExt},
     constant::{BIN_PATH, CACHE_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH, REGISTRY_PATH},
 };
 
+fn get_username() -> Result<String> {
+    unsafe {
+        let uid = geteuid();
+        let pwd = getpwuid(uid);
+        if pwd.is_null() {
+            anyhow::bail!("Failed to get user");
+        }
+        let username = CStr::from_ptr((*pwd).pw_name)
+            .to_string_lossy()
+            .into_owned();
+        Ok(username)
+    }
+}
+
 pub fn home_path() -> String {
     env::var("HOME").unwrap_or_else(|_| {
-        panic!("Unable to find home directory.");
+        let username = env::var("USER")
+            .or_else(|_| env::var("LOGNAME"))
+            .or_else(|_| get_username().map_err(|_| ()))
+            .unwrap_or_else(|_| panic!("Couldn't determine username. Please fix the system."));
+        format!("home/{}", username)
     })
 }
 
@@ -88,9 +111,12 @@ pub fn parse_size(size_str: &str) -> Option<u64> {
     let size_str = size_str.trim();
     let units = [
         ("B", 1u64),
-        ("KB", 1024u64),
-        ("MB", 1024u64 * 1024),
-        ("GB", 1024u64 * 1024 * 1024),
+        ("KB", 1000u64),
+        ("MB", 1000u64 * 1000),
+        ("GB", 1000u64 * 1000 * 1000),
+        ("KiB", 1024u64),
+        ("MiB", 1024u64 * 1024),
+        ("GiB", 1024u64 * 1024 * 1024),
     ];
 
     for (unit, multiplier) in &units {
@@ -347,4 +373,25 @@ pub fn download_progress_style(with_msg: bool) -> ProgressStyle {
             },
         )
         .progress_chars("━━")
+}
+
+#[derive(PartialEq, Eq)]
+pub enum AskType {
+    Warn,
+    Normal,
+}
+
+pub fn interactive_ask(ques: &str, ask_type: AskType) -> Result<String> {
+    if ask_type == AskType::Warn {
+        warn!("{ques}");
+    } else {
+        println!("{ques}");
+    }
+
+    std::io::stdout().flush()?;
+
+    let mut response = String::new();
+    std::io::stdin().read_line(&mut response)?;
+
+    Ok(response.trim().to_owned())
 }
