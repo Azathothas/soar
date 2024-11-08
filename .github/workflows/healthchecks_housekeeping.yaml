@@ -93,6 +93,24 @@ jobs:
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif"
         continue-on-error: true
 
+      - name: List (soar list)
+        run: |
+          #presets
+          set +x ; set +e
+          #-------------#
+          sudo docker exec -u "soar" "soar-vhs" bash -l -c '
+          set +e ; set -x
+          mkdir -pv "/soar" ; cd "/soar"
+          sudo chown -R "$(whoami):$(whoami)" "/SOAR_TESTS"
+          sudo chmod -R 755 "/SOAR_TESTS"
+          curl -qfsSL "https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/vhs/list.tape" -o "/soar/list.tape"
+          vhs "/soar/list.tape" --output "/SOAR_TESTS/list.gif"
+          '
+          sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
+          sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
+          file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list.gif"
+        continue-on-error: true
+
       - name: Git Pull
         run: |
           cd "${GITHUB_WORKSPACE}/main" && git pull origin main
