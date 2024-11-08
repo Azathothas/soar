@@ -6,13 +6,13 @@ Require soar
 Set Shell "bash"
 Set WindowBar Colorful
 Set Padding 0
-Set PlaybackSpeed 0.4
+Set PlaybackSpeed 0.7
 #Set Theme "rose-pine"
 Env PROMPT "➜ "
 Env PS1 "➜ "
 Sleep 500ms
 #Actual CMD
-Type@200ms "soar list"
+Type@300ms "soar list"
 Enter
 Sleep 3s
 Type@400ms "soar list | wc -l"
