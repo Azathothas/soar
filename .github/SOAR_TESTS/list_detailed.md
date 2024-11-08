@@ -8,7 +8,7 @@ Soar is a fast Linux package manager that doesn't suck. Works with static binari
 
 <p align="center">
     <a href="https://soar.qaidvoid.dev">
-    <img src="https://bin.pkgforge.dev/list_long.gif" alt="soar-list"/></a>
+    <img src="https://bin.pkgforge.dev/list_detailed.gif" alt="soar-list"/></a>
 </p>
 
 ## 🌟 Key Features
