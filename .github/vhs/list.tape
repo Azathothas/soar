@@ -6,7 +6,7 @@ Require soar
 Set Shell "bash"
 Set WindowBar Colorful
 Set Padding 0
-Set PlaybackSpeed 0.7
+Set PlaybackSpeed 0.6
 #Set Theme "rose-pine"
 Env PROMPT "➜ "
 Env PS1 "➜ "
