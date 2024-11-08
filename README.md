@@ -7,7 +7,8 @@
 Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/SOAR_TESTS/list.gif" alt="soar"/>
+    <a href="https://soar.qaidvoid.dev">
+    <img src="https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/SOAR_TESTS/list.gif" alt="soar"/></a>
 </p>
 
 ## 🌟 Key Features
