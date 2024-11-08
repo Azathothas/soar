@@ -91,6 +91,7 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
           sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif"
+          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif" "r2:/bin/version.gif" --checksum --check-first --user-agent="${USER_AGENT}"
         continue-on-error: true
 
       - name: List (soar list)
@@ -110,6 +111,27 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
           sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list.gif"
+          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list.gif" "r2:/bin/list.gif" --checksum --check-first --user-agent="${USER_AGENT}"
+        continue-on-error: true
+
+      - name: List (soar list_detailed)
+        run: |
+          #presets
+          set +x ; set +e
+          #-------------#
+          sudo docker exec -u "soar" "soar-vhs" bash -l -c '
+          set +e ; set -x
+          mkdir -pv "/soar" ; cd "/soar"
+          sudo chown -R "$(whoami):$(whoami)" "/SOAR_TESTS"
+          sudo chmod -R 755 "/SOAR_TESTS"
+          curl -qfsSL "https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/vhs/list_detailed.tape" -o "/soar/list_detailed.tape"
+          PATH="${HOME}/.local/share/soar/bin:${PATH}"
+          vhs "/soar/list_detailed.tape" --output "/SOAR_TESTS/list_detailed.gif"
+          '
+          sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
+          sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
+          file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list_detailed.gif"
+          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list_detailed.gif" "r2:/bin/list_detailed.gif" --checksum --check-first --user-agent="${USER_AGENT}"
         continue-on-error: true
 
       - name: Git Pull
