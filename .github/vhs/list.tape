@@ -12,9 +12,9 @@ Env PROMPT "➜ "
 Env PS1 "➜ "
 Sleep 500ms
 #Actual CMD
-Type@300ms "soar list"
+Type@450ms "soar list"
 Enter
 Sleep 3s
-Type@400ms "soar list | wc -l"
+Type@450ms "soar list | wc -l"
 Enter
 Sleep 2s
