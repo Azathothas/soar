@@ -104,6 +104,7 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "/SOAR_TESTS"
           sudo chmod -R 755 "/SOAR_TESTS"
           curl -qfsSL "https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/vhs/list.tape" -o "/soar/list.tape"
+          PATH="${HOME}/.local/share/soar/bin:${PATH}"
           vhs "/soar/list.tape" --output "/SOAR_TESTS/list.gif"
           '
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
