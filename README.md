@@ -21,11 +21,23 @@
 
 </div>
 
-Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
-
 <p align="center">
     <img src="icons/hicolor/scalable/apps/soar.svg" alt="soar" width="256"/>
 </p>
+
+<p align="center">
+    Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
+</p>
+
+<div align="center">
+
+| <a href="https://soar.qaidvoid.dev/install"><img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/install.webp" /></a> | <a href="https://soar.qaidvoid.dev/remove"><img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/remove.webp" /></a> | <a href="https://soar.qaidvoid.dev/download"><img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/download.webp" /></a> | 
+| - | - | - |
+| [**`Install Packages`**](https://soar.qaidvoid.dev/install) | [**`Remove Packages`**](https://soar.qaidvoid.dev/remove) | [**`Download File`**](https://soar.qaidvoid.dev/download) |
+| <a href="https://soar.qaidvoid.dev/run"><img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/run.webp" /></a> | <a href="https://soar.qaidvoid.dev/list"><img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/list.webp" /></a> | <a href="https://soar.qaidvoid.dev/search"><img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/search.webp" /></a> |
+| [**`Run Package`**](https://soar.qaidvoid.dev/run) | [**`List Packages`**](https://soar.qaidvoid.dev/list) | [**`Search Packages`**](https://soar.qaidvoid.dev/search) |
+
+</div>
 
 ## 🌟 Key Features
 - [Universal Package Support](https://soar.qaidvoid.dev/#universal-package-support)
