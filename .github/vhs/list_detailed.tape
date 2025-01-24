@@ -12,13 +12,10 @@ Env PROMPT "➜ "
 Env PS1 "➜ "
 Sleep 500ms
 #Actual CMD
-Type@500ms "soar list base"
+Type@500ms "soar list bincache"
 Enter
 Sleep 2s
-Type@500ms "soar list bin"
-Enter
-Sleep 2s
-Type@500ms "soar list pkg"
+Type@500ms "soar list pkgcache"
 Enter
 Sleep 2s
 Type@450ms "soar list | wc -l"
