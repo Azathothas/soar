@@ -8,7 +8,6 @@ on:
     - cron: "0 */12 * * *" #Every 12 Hrs
 
 env:
-  RCLONE_CF_R2_PUB: "${{ secrets.RCLONE_CF_R2_PUB }}"
 #------------------------------------------------------------------------------------#
 jobs:
   check:
@@ -57,8 +56,8 @@ jobs:
           popd >/dev/null 2>&1
           #-------------#
           ##Setup rClone
-          mkdir -p "$HOME/.config/rclone"
-          echo "${{ secrets.RCLONE_CF_R2_PUB }}" > "$HOME/.config/rclone/rclone.conf"
+          mkdir -p "${HOME}/.config/rclone"
+          echo "${{ secrets.CF_META }}" > "${HOME}/.config/rclone/rclone.conf"
           export RCLONE_STATS="120s" ; echo "RCLONE_STATS=${RCLONE_STATS}" >> "${GITHUB_ENV}"
           #-------------#
           ##User-Agent
@@ -91,7 +90,7 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
           sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif"
-          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif" "r2:/bin/version.gif" --checksum --check-first --user-agent="${USER_AGENT}"
+          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif" "r2:/meta/misc/version.gif" --checksum --check-first --user-agent="${USER_AGENT}"
         continue-on-error: true
 
       - name: List (soar list)
@@ -112,7 +111,7 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
           sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list.gif"
-          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list.gif" "r2:/bin/list.gif" --checksum --check-first --user-agent="${USER_AGENT}"
+          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list.gif" "r2:/meta/misc/list.gif" --checksum --check-first --user-agent="${USER_AGENT}"
         continue-on-error: true
 
       - name: List (soar list_detailed)
@@ -133,7 +132,7 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
           sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list_detailed.gif"
-          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list_detailed.gif" "r2:/bin/list_detailed.gif" --checksum --check-first --user-agent="${USER_AGENT}"
+          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list_detailed.gif" "r2:/meta/misc/list_detailed.gif" --checksum --check-first --user-agent="${USER_AGENT}"
         continue-on-error: true
 
       - name: Git Pull
