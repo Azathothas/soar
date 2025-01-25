@@ -23,6 +23,7 @@ use soar_core::{
 use tracing::{error, info};
 use update::update_packages;
 use use_package::use_alternate_package;
+use utils::COLOR;
 
 mod cli;
 mod download;
@@ -68,6 +69,11 @@ async fn handle_cli() -> SoarResult<()> {
 
     if let Some(ref profile) = args.profile {
         set_current_profile(profile)?;
+    }
+
+    if args.no_color {
+        let mut color = COLOR.write().unwrap();
+        *color = false;
     }
 
     match args.command {
@@ -127,10 +133,7 @@ async fn handle_cli() -> SoarResult<()> {
         cli::Commands::Update { packages } => {
             update_packages(packages).await?;
         }
-        cli::Commands::ListInstalledPackages {
-            packages,
-            repo_name,
-        } => {
+        cli::Commands::ListInstalledPackages { repo_name } => {
             list_installed_packages(repo_name).await?;
         }
         cli::Commands::ListPackages { repo_name } => {
@@ -140,8 +143,19 @@ async fn handle_cli() -> SoarResult<()> {
         cli::Commands::Inspect { package } => {
             inspect_log(&package, InspectType::BuildScript).await?
         }
-        cli::Commands::Run { yes, command } => {
-            run_package(command.as_ref()).await?;
+        cli::Commands::Run {
+            yes,
+            command,
+            pkg_id,
+            repo_name,
+        } => {
+            run_package(
+                command.as_ref(),
+                yes,
+                repo_name.as_deref(),
+                pkg_id.as_deref(),
+            )
+            .await?;
         }
         cli::Commands::Use { package_name } => {
             use_alternate_package(&package_name).await?;
