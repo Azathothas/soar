@@ -32,8 +32,8 @@ jobs:
           ##Install coreutils
           sudo apt-get update -y -qq && sudo apt-get install curl coreutils dos2unix file findutils gawk git jq moreutils rsync tar xz-utils util-linux wget zip -y -qq
           ##Install Addons
-          #https://github.com/Azathothas/Arsenal/blob/main/misc/Linux/install_dev_tools.sh
-          bash <(curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/install_dev_tools.sh")
+          #https://github.com/pkgforge/devscripts/blob/main/Linux/install_bins_curl.sh
+          bash <(curl -qfsSL "https://raw.githubusercontent.com/pkgforge/devscripts/refs/heads/main/Linux/install_bins_curl.sh")
           ##Create Output Dir
           mkdir -p "${GITHUB_WORKSPACE}/main"
         continue-on-error: true
@@ -148,8 +148,8 @@ jobs:
             # Presets
             set +x ; set +e
             #--------------#
-            #https://github.com/Azathothas/Arsenal/blob/main/misc/Linux/install_dev_tools.sh
-            bash <(curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/install_dev_tools.sh")
+            #https://github.com/pkgforge/devscripts/blob/main/Linux/install_bins_curl.sh
+            bash <(curl -qfsSL "https://raw.githubusercontent.com/pkgforge/devscripts/refs/heads/main/Linux/install_bins_curl.sh")
           continue-on-error: true
   
         - name: Set up QEMU
@@ -169,7 +169,7 @@ jobs:
             #Build 
             pushd "$(mktemp -d)" >/dev/null 2>&1
             docker stop "alpine-builder" 2>/dev/null ; docker rm "alpine-builder" 2>/dev/null
-            docker run --platform="linux/amd64" --privileged --net="host" --name "alpine-builder" -e GITHUB_TOKEN="${GITHUB_TOKEN}" --pull="always" "azathothas/alpine-builder:latest" \
+            docker run --platform="linux/amd64" --privileged --net="host" --name "alpine-builder" -e GITHUB_TOKEN="${GITHUB_TOKEN}" --pull="always" "ghcr.io/pkgforge/devscripts/alpine-builder:latest" \
              bash -l -c '
              #Setup ENV
               mkdir -p "/build-bins" && pushd "$(mktemp -d)" >/dev/null 2>&1
@@ -232,7 +232,7 @@ jobs:
     build-aarch64-Linux:
         if: needs.sync-upstream.outputs.SKIP_AARCH64 == 'NO'
         name: Build On (aarch64-Linux)
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04-arm
         needs: [sync-upstream]
         permissions:
           contents: read
@@ -283,8 +283,8 @@ jobs:
               # Presets
               set +x ; set +e
               #--------------#
-              #https://github.com/Azathothas/Arsenal/blob/main/misc/Linux/install_dev_tools.sh
-              bash <(curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/install_dev_tools.sh")
+              #https://github.com/pkgforge/devscripts/blob/main/Linux/install_bins_curl.sh
+              bash <(curl -qfsSL "https://raw.githubusercontent.com/pkgforge/devscripts/refs/heads/main/Linux/install_bins_curl.sh")
             continue-on-error: true
 
           - name: Set up QEMU
@@ -304,7 +304,7 @@ jobs:
               #Build 
               pushd "$(mktemp -d)" >/dev/null 2>&1
               docker stop "alpine-builder" 2>/dev/null ; docker rm "alpine-builder" 2>/dev/null
-              docker run --platform="linux/arm64" --privileged --net="host" --name "alpine-builder" -e GITHUB_TOKEN="${GITHUB_TOKEN}" --pull="always" "azathothas/alpine-builder:latest" \
+              docker run --platform="linux/arm64" --privileged --net="host" --name "alpine-builder" -e GITHUB_TOKEN="${GITHUB_TOKEN}" --pull="always" "ghcr.io/pkgforge/devscripts/alpine-builder:latest" \
                bash -l -c '
                #Setup ENV
                 mkdir -p "/build-bins" && pushd "$(mktemp -d)" >/dev/null 2>&1
@@ -395,8 +395,8 @@ jobs:
           # Presets
           set +x ; set +e
           #--------------#
-          #https://github.com/Azathothas/Arsenal/blob/main/misc/Linux/install_dev_tools.sh
-          bash <(curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/install_dev_tools.sh")
+          #https://github.com/pkgforge/devscripts/blob/main/Linux/install_bins_curl.sh
+          bash <(curl -qfsSL "https://raw.githubusercontent.com/pkgforge/devscripts/refs/heads/main/Linux/install_bins_curl.sh")
         continue-on-error: true  
 
       - name: Download Artifacts
