@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     os::unix::fs,
     path::PathBuf,
     sync::{
@@ -30,7 +31,7 @@ use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
 
 use crate::{
-    progress::{self, create_progress_bar},
+    progress::handle_install_progress,
     state::AppState,
     utils::{has_no_desktop_integration, select_package_interactively},
 };
@@ -47,6 +48,9 @@ pub struct InstallContext {
     pub portable_config: Option<String>,
     pub warnings: Arc<Mutex<Vec<String>>>,
     pub errors: Arc<Mutex<Vec<String>>>,
+    pub retrying: Arc<AtomicU64>,
+    pub failed: Arc<AtomicU64>,
+    pub installed_indices: Arc<Mutex<HashSet<usize>>>,
 }
 
 pub fn create_install_context(
@@ -58,7 +62,8 @@ pub fn create_install_context(
 ) -> InstallContext {
     let multi_progress = Arc::new(MultiProgress::new());
     let total_progress_bar = multi_progress.add(ProgressBar::new(total_packages as u64));
-    total_progress_bar.set_style(ProgressStyle::with_template("Installing {pos}/{len}").unwrap());
+    total_progress_bar
+        .set_style(ProgressStyle::with_template("Installing {pos}/{len} {msg}").unwrap());
 
     InstallContext {
         multi_progress,
@@ -71,6 +76,9 @@ pub fn create_install_context(
         portable_config,
         warnings: Arc::new(Mutex::new(Vec::new())),
         errors: Arc::new(Mutex::new(Vec::new())),
+        retrying: Arc::new(AtomicU64::new(0)),
+        failed: Arc::new(AtomicU64::new(0)),
+        installed_indices: Arc::new(Mutex::new(HashSet::new())),
     }
 }
 
@@ -81,6 +89,7 @@ pub async fn install_packages(
     portable: Option<String>,
     portable_home: Option<String>,
     portable_config: Option<String>,
+    no_notes: bool,
 ) -> SoarResult<()> {
     let state = AppState::new();
     let repo_db = state.repo_db().await?;
@@ -96,7 +105,7 @@ pub async fn install_packages(
         portable_config,
     );
 
-    perform_installation(install_context, install_targets, core_db.clone()).await
+    perform_installation(install_context, install_targets, core_db.clone(), no_notes).await
 }
 
 fn resolve_packages(
@@ -244,6 +253,7 @@ pub async fn perform_installation(
     ctx: InstallContext,
     targets: Vec<InstallTarget>,
     core_db: Arc<Mutex<Connection>>,
+    no_notes: bool,
 ) -> SoarResult<()> {
     let mut handles = Vec::new();
     let fixed_width = 40;
@@ -274,15 +284,21 @@ pub async fn perform_installation(
         error!("{error}");
     }
 
-    for target in targets {
-        let pkg = target.package;
-        let notes = pkg.notes.unwrap_or_default().join("\n  ");
-        info!(
-            "\n* {}#{}\n  {}\n",
-            pkg.pkg_name,
-            pkg.pkg_id,
-            if notes.is_empty() { "" } else { &notes }
-        );
+    if !no_notes {
+        let installed_indices = ctx.installed_indices.lock().unwrap();
+        for (idx, target) in targets.into_iter().enumerate() {
+            let pkg = target.package;
+            if !installed_indices.contains(&idx) || pkg.notes.is_none() {
+                continue;
+            }
+            let notes = pkg.notes.unwrap_or_default().join("\n  ");
+            info!(
+                "\n* {}#{}\n  {}\n",
+                pkg.pkg_name,
+                pkg.pkg_id,
+                if notes.is_empty() { "" } else { &notes }
+            );
+        }
     }
 
     info!(
@@ -302,30 +318,23 @@ async fn spawn_installation_task(
     fixed_width: usize,
 ) -> tokio::task::JoinHandle<()> {
     let permit = ctx.semaphore.clone().acquire_owned().await.unwrap();
-    let progress_bar = ctx
-        .multi_progress
-        .insert_from_back(1, create_progress_bar());
+    let progress_bar = Arc::new(Mutex::new(None));
 
-    let message = format!(
-        "[{}/{}] {}#{}",
-        idx + 1,
-        ctx.total_packages,
-        target.package.pkg_name,
-        target.package.pkg_id
-    );
-    let message = if message.len() > fixed_width {
-        format!("{:.width$}", message, width = fixed_width)
-    } else {
-        format!("{:<width$}", message, width = fixed_width)
+    let progress_callback = {
+        let ctx = ctx.clone();
+        let progress_bar = progress_bar.clone();
+        let package = target.package.clone();
+
+        Arc::new(move |state| {
+            let mut pb_lock = progress_bar.lock().unwrap();
+
+            handle_install_progress(state, &mut *pb_lock, &ctx, &package, idx, fixed_width);
+        })
     };
-    progress_bar.set_message(message);
-
-    let progress_callback = Arc::new(move |state| {
-        progress::handle_progress(state, &progress_bar);
-    });
 
     let total_pb = ctx.total_progress_bar.clone();
     let installed_count = ctx.installed_count.clone();
+    let installed_indices = ctx.installed_indices.clone();
     let ctx = ctx.clone();
 
     tokio::spawn(async move {
@@ -344,6 +353,7 @@ async fn spawn_installation_task(
             }
         } else {
             installed_count.fetch_add(1, Ordering::Relaxed);
+            installed_indices.lock().unwrap().insert(idx);
             total_pb.inc(1);
         }
 
