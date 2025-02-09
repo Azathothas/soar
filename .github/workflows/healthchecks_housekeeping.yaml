@@ -125,6 +125,7 @@ jobs:
           sudo chmod -R 755 "/SOAR_TESTS"
           curl -qfsSL "https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/vhs/list_detailed.tape" -o "/soar/list_detailed.tape"
           PATH="${HOME}/.local/share/soar/bin:${PATH}"
+          soar defconfig --external || soar defconfig || true
           soar sync
           vhs "/soar/list_detailed.tape" --output "/SOAR_TESTS/list_detailed.gif"
           '
