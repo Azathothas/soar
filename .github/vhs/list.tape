@@ -17,4 +17,4 @@ Enter
 Sleep 3s
 Type@450ms "soar list | wc -l"
 Enter
-Sleep 2s
+Sleep 4s
