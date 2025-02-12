@@ -40,7 +40,7 @@ RUN <<EOS
  #Prep ENV
   set +e
  #Configure ENV
-  curl -qfsSL "https://pub.ajam.dev/repos/Azathothas/Arsenal/misc/Linux/.bashrc" -o "/etc/bash.bashrc"
+  curl -qfsSL "https://raw.githubusercontent.com/pkgforge/devscripts/refs/heads/main/Linux/.bashrc" -o "/etc/bash.bashrc"
   ln -svf "/etc/bash.bashrc" "/root/.bashrc" 2>/dev/null || true
   ln -svf "/etc/bash.bashrc" "/home/soar/.bashrc" 2>/dev/null || true
   ln -svf "/etc/bash.bashrc" "/etc/bash/bashrc" 2>/dev/null || true
@@ -50,7 +50,7 @@ RUN <<EOS
   chown -R "soar:soar" "${LOCAL_PATH}"
   chmod -R 755 "${LOCAL_PATH}"
  #Soar
-  curl -qfsSL "https://github.com/QaidVoid/soar/releases/download/nightly/soar-nightly-$(uname -m)-linux" -o "/usr/bin/soar"
+  curl -qfsSL "https://github.com/pkgforge/soar/releases/download/nightly/soar-$(uname -m)-linux" -o "/usr/bin/soar"
   chmod +x "/usr/bin/soar"
  #Sanity Check
   if [ ! -f "/usr/bin/soar" ] || [ "$(stat -c %s "/usr/bin/soar")" -le 1000 ]; then
@@ -58,12 +58,12 @@ RUN <<EOS
      exit 1
   fi
  #Extras
-  curl -qfsSL "https://bin.ajam.dev/$(uname -m)/7z" -o "/usr/bin/7z"
-  curl -qfsSL "https://bin.ajam.dev/$(uname -m)/chafa" -o "/usr/bin/chafa"
-  curl -qfsSL "https://bin.ajam.dev/$(uname -m)/croc" -o "/usr/bin/croc"
-  curl -qfsSL "https://bin.ajam.dev/$(uname -m)/eget" -o "/usr/bin/eget"
-  curl -qfsSL "https://bin.ajam.dev/$(uname -m)/micro" -o "/usr/bin/micro"
-  curl -qfsSL "https://bin.ajam.dev/$(uname -m)/rsync" -o "/usr/bin/rsync"
+  curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/7z" -o "/usr/bin/7z"
+  curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/chafa" -o "/usr/bin/chafa"
+  curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/croc" -o "/usr/bin/croc"
+  curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/eget" -o "/usr/bin/eget"
+  curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/micro" -o "/usr/bin/micro"
+  curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/rsync" -o "/usr/bin/rsync"
   chmod -v +x "/usr/bin/7z" "/usr/bin/chafa" "/usr/bin/croc" "/usr/bin/eget" "/usr/bin/micro" "/usr/bin/rsync"
 EOS
 #------------------------------------------------------------------------------------#
