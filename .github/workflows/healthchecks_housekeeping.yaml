@@ -173,6 +173,7 @@ jobs:
           #--------------#
           #touch "${HOME}/.rclone.conf"
           echo "${{ secrets.RCLONE_CF_R2_PUB }}" > "${HOME}/.rclone.conf"
+          echo "${{ secrets.RCLONE_CF_R2_PUB }}" > "${HOME}/.config/rclone/rclone.conf"
           #chdir to Repo
           cd "${GITHUB_WORKSPACE}/main"
           #Git pull
