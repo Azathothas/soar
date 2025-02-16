@@ -64,7 +64,7 @@ RUN <<EOS
   curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/eget" -o "/usr/bin/eget"
   curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/micro" -o "/usr/bin/micro"
   curl -qfsSL "https://bin.pkgforge.dev/$(uname -m)/rsync" -o "/usr/bin/rsync"
-  chmod -v +x "/usr/bin/7z" "/usr/bin/chafa" "/usr/bin/croc" "/usr/bin/eget" "/usr/bin/micro" "/usr/bin/rsync"
+  chmod -v +x "/usr/bin/7z" "/usr/bin/chafa" "/usr/bin/croc" "/usr/bin/eget" "/usr/bin/micro" "/usr/bin/rsync" || true
 EOS
 #------------------------------------------------------------------------------------#
 #Start
