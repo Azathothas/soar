@@ -74,8 +74,13 @@ jobs:
           #presets
           set +x ; set +e
           #-------------#
-          docker stop "soar-vhs" 2>/dev/null ; docker rm "soar-vhs"
-          sudo docker run --name "soar-vhs" --detach --privileged --rm -v "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS:/SOAR_TESTS" --hostname "Qaid" -u "soar" "soar-vhs" tail -f "/dev/null"
+          if docker inspect "soar-vhs" &>/dev/null; then
+            docker inspect "soar-vhs"
+            docker stop "soar-vhs" 2>/dev/null ; docker rm "soar-vhs"
+            sudo docker run --name "soar-vhs" --detach --privileged --rm -v "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS:/SOAR_TESTS" --hostname "Qaid" -u "soar" "soar-vhs" tail -f "/dev/null"
+          else
+            echo "CONTINUE_GHRUN=FALSE" >> "${GITHUB_ENV}"
+          fi
         continue-on-error: true
 
       - name: Version (soar --version)
