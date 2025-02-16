@@ -48,10 +48,15 @@ jobs:
           #GH
           rm -rvf "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS" 2>/dev/null
           mkdir -pv "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS"
-          pushd "$($TMPDIRS)" >/dev/null 2>&1
+          pushd "$(mktemp -d)" &>/dev/null
            curl -qfsSL "https://raw.githubusercontent.com/Azathothas/soar/refs/heads/main/.github/dockerfiles/soar_vhs.Dockerfile" -o "./Dockerfile"
-           docker build --no-cache --tag "soar-vhs" --file "./Dockerfile" "."
-          popd >/dev/null 2>&1
+           docker build --no-cache --tag "soar-vhs" --file "./Dockerfile" "." ; sleep 3
+           if docker inspect "soar-vhs" &>/dev/null 2>&1; then
+             echo "CONTINUE_GHRUN=TRUE" >> "${GITHUB_ENV}"
+           else
+             echo "CONTINUE_GHRUN=FALSE" >> "${GITHUB_ENV}"
+           fi
+          popd &>/dev/null
           #-------------#
           ##Setup rClone
           mkdir -p "${HOME}/.config/rclone"
@@ -64,6 +69,7 @@ jobs:
         continue-on-error: true
 
       - name: Run soar-vhs
+        if: env.CONTINUE_GHRUN != 'FALSE'
         run: |
           #presets
           set +x ; set +e
@@ -73,6 +79,7 @@ jobs:
         continue-on-error: true
 
       - name: Version (soar --version)
+        if: env.CONTINUE_GHRUN != 'FALSE'
         run: |
           #presets
           set +x ; set +e
@@ -92,6 +99,7 @@ jobs:
         continue-on-error: true
 
       - name: List (soar list)
+        if: env.CONTINUE_GHRUN != 'FALSE'
         run: |
           #presets
           set +x ; set +e
@@ -114,6 +122,7 @@ jobs:
         continue-on-error: true
 
       - name: List (soar list_detailed)
+        if: env.CONTINUE_GHRUN != 'FALSE'
         run: |
           #presets
           set +x ; set +e
@@ -136,11 +145,13 @@ jobs:
         continue-on-error: true
 
       - name: Git Pull
+        if: env.CONTINUE_GHRUN != 'FALSE'
         run: |
           cd "${GITHUB_WORKSPACE}/main" && git pull origin main
         continue-on-error: true
 
       - uses: stefanzweifel/git-auto-commit-action@v5
+        if: env.CONTINUE_GHRUN != 'FALSE'
         with:
           repository: ./main        
           commit_user_name: Azathothas
