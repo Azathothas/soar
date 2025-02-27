@@ -59,11 +59,6 @@ jobs:
            fi
           popd &>/dev/null
           #-------------#
-          ##Setup rClone
-          mkdir -p "${HOME}/.config/rclone"
-          echo "${{ secrets.CF_META }}" > "${HOME}/.config/rclone/rclone.conf"
-          export RCLONE_STATS="120s" ; echo "RCLONE_STATS=${RCLONE_STATS}" >> "${GITHUB_ENV}"
-          #-------------#
           ##User-Agent
           USER_AGENT="$(curl -qfsSL 'https://pub.ajam.dev/repos/Azathothas/Wordlists/Misc/User-Agents/ua_chrome_macos_latest.txt')" && export USER_AGENT="${USER_AGENT}"
           echo "USER_AGENT=${USER_AGENT}" >> "${GITHUB_ENV}"
@@ -101,7 +96,6 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
           sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif"
-          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/version.gif" "r2:/meta/misc/version.gif" --checksum --check-first --user-agent="${USER_AGENT}"
         continue-on-error: true
 
       - name: List (soar list)
@@ -124,7 +118,6 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
           sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list.gif"
-          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list.gif" "r2:/meta/misc/list.gif" --checksum --check-first --user-agent="${USER_AGENT}"
         continue-on-error: true
 
       - name: List (soar list_detailed)
@@ -147,7 +140,6 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "${GITHUB_WORKSPACE}/main/.github"
           sudo chmod -R 755 "${GITHUB_WORKSPACE}/main/.github"
           file "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list_detailed.gif"
-          rclone copyto "${GITHUB_WORKSPACE}/main/.github/SOAR_TESTS/list_detailed.gif" "r2:/meta/misc/list_detailed.gif" --checksum --check-first --user-agent="${USER_AGENT}"
         continue-on-error: true
 
       - name: Git Pull
@@ -165,24 +157,3 @@ jobs:
           commit_message: "‎‎‏‏‎ ‎"
           #push_options: '--force'
         continue-on-error: true
-#------------------------------------------------------------------------------------#
-      - name: rClone BackUp Repo ("https://pub.ajam.dev/repos/${GITHUB_REPOSITORY}")
-        run: |
-          # Presets
-          set +x ; set +e
-          #--------------#
-          #touch "${HOME}/.rclone.conf"
-          echo "${{ secrets.RCLONE_CF_R2_PUB }}" > "${HOME}/.rclone.conf"
-          echo "${{ secrets.RCLONE_CF_R2_PUB }}" > "${HOME}/.config/rclone/rclone.conf"
-          #chdir to Repo
-          cd "${GITHUB_WORKSPACE}/main"
-          #Git pull
-          git pull origin main --no-edit 2>/dev/null
-          #Del Bloat
-          rm -rf "$(pwd)/.git"
-          #Upload to Pub
-          echo -e "[+] Syncing ${GITHUB_REPOSITORY} to pub.ajam.dev/repos/${GITHUB_REPOSITORY} \n"
-          rclone sync "." "r2:/pub/repos/${GITHUB_REPOSITORY}/" --user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) obsidian/1.5.3 Chrome/114.0.5735.289 Electron/25.8.1 Safari/537.36" --buffer-size="100M" --s3-upload-concurrency="500" --s3-chunk-size="100M" --multi-thread-streams="500" --checkers="2000" --transfers="1000" --check-first --checksum --copy-links --fast-list --progress
-        continue-on-error: true
-#EOF
-#------------------------------------------------------------------------------------#
