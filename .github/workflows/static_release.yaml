@@ -16,6 +16,7 @@ jobs:
         contents: write
       outputs:
         SKIP_X86_64: ${{ steps.set-outputs.outputs.SKIP_X86_64 }}
+        SKIP_RISCV64: ${{ steps.set-outputs.outputs.SKIP_RISCV64 }}
         SKIP_AARCH64: ${{ steps.set-outputs.outputs.SKIP_AARCH64 }}
 
       steps:
@@ -59,6 +60,9 @@ jobs:
              export SKIP_AARCH64="YES"
              echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_ENV}"
              echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_OUTPUT}"
+             export SKIP_RISCV64="YES"
+             echo "SKIP_RISCV64=${SKIP_RISCV64}" >> "${GITHUB_ENV}"
+             echo "SKIP_RISCV64=${SKIP_RISCV64}" >> "${GITHUB_OUTPUT}"
           else
             #Sync Repo
              echo "${LATEST_COMMIT}" > "${GITHUB_WORKSPACE}/main/.github/LATEST.txt"
