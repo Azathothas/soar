@@ -137,7 +137,7 @@ jobs:
             SYSTMP="$(dirname $(mktemp -u))" && export SYSTMP="${SYSTMP}"
             echo "SYSTMP=${SYSTMP}" >> "${GITHUB_ENV}"
             ##Artifacts
-            ARTIFACTS="${SYSTMP}/ARTIFACTS-$(uname -m)-$(uname -s)" && export "ARTIFACTS=${ARTIFACTS}"
+            ARTIFACTS="${SYSTMP}/ARTIFACTS-x86_64-Linux" && export "ARTIFACTS=${ARTIFACTS}"
             echo "ARTIFACTS=${ARTIFACTS}" >> "${GITHUB_ENV}"
             ##User-Agent
             USER_AGENT="$(curl -qfsSL 'https://raw.githubusercontent.com/pkgforge/devscripts/refs/heads/main/Misc/User-Agents/ua_chrome_macos_latest.txt')" && export USER_AGENT="${USER_AGENT}"
@@ -306,7 +306,7 @@ jobs:
             SYSTMP="$(dirname $(mktemp -u))" && export SYSTMP="${SYSTMP}"
             echo "SYSTMP=${SYSTMP}" >> "${GITHUB_ENV}"
             ##Artifacts
-            ARTIFACTS="${SYSTMP}/ARTIFACTS-$(uname -m)-$(uname -s)" && export "ARTIFACTS=${ARTIFACTS}"
+            ARTIFACTS="${SYSTMP}/ARTIFACTS-riscv64-Linux" && export "ARTIFACTS=${ARTIFACTS}"
             echo "ARTIFACTS=${ARTIFACTS}" >> "${GITHUB_ENV}"
             ##User-Agent
             USER_AGENT="$(curl -qfsSL 'https://raw.githubusercontent.com/pkgforge/devscripts/refs/heads/main/Misc/User-Agents/ua_chrome_macos_latest.txt')" && export USER_AGENT="${USER_AGENT}"
@@ -477,7 +477,7 @@ jobs:
               ##Artifacts
               #ARTIFACTS="${SYSTMP}/ARTIFACTS-$(uname -m)-$(uname -s)" && export "ARTIFACTS=${ARTIFACTS}"
               ARTIFACTS="${SYSTMP}/ARTIFACTS-aarch64-Linux" && export "ARTIFACTS=${ARTIFACTS}"
-              echo "ARTIFACTS=${ARTIFACTS}" >> "${GITHUB_ENV}"          
+              echo "ARTIFACTS=${ARTIFACTS}" >> "${GITHUB_ENV}"
               ##User-Agent
               USER_AGENT="$(curl -qfsSL 'https://raw.githubusercontent.com/pkgforge/devscripts/refs/heads/main/Misc/User-Agents/ua_chrome_macos_latest.txt')" && export USER_AGENT="${USER_AGENT}"
               echo "USER_AGENT=${USER_AGENT}" >> "${GITHUB_ENV}"
