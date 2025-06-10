@@ -72,6 +72,9 @@ jobs:
              export SKIP_AARCH64="NO"
              echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_ENV}"
              echo "SKIP_AARCH64=${SKIP_AARCH64}" >> "${GITHUB_OUTPUT}"
+             export SKIP_RISCV64="NO"
+             echo "SKIP_RISCV64=${SKIP_RISCV64}" >> "${GITHUB_ENV}"
+             echo "SKIP_RISCV64=${SKIP_RISCV64}" >> "${GITHUB_OUTPUT}"
           fi
           popd >/dev/null 2>&1
         continue-on-error: true
