@@ -1,4 +1,4 @@
-name: 🛍️ soar 📦 (aarch64 || x86_64) Linux Build 📦🗄️
+name: 🛍️ soar 📦 (aarch64 || riscv64 || x86_64) Linux Build 📦🗄️
 on:
   workflow_dispatch:
   schedule:
