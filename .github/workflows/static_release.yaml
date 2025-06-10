@@ -229,7 +229,7 @@ jobs:
               file "/build-bins/"* && stat -c "%n:         %s Bytes" "/build-bins/"* && \
               du "/build-bins/"* --bytes --human-readable --time --time-style="full-iso" --summarize
              #Rename
-              find "/build-bins/" -type f ! -name "*.txt" -exec  bash -c '\''mv "$0" "${0}-riscv64-Linux"'\'' {} \; 2>/dev/null
+              find "/build-bins/" -type f ! -name "*.txt" -exec  bash -c '\''mv "$0" "${0}-x86_64-Linux"'\'' {} \; 2>/dev/null
              #UPX
               find "/build-bins/" -type f | xargs realpath | xargs -I {} upx --best "{}" -f --force-overwrite -o"{}.upx" -qq 2>/dev/null
               popd >/dev/null 2>&1
@@ -564,7 +564,7 @@ jobs:
                 file "/build-bins/"* && stat -c "%n:         %s Bytes" "/build-bins/"* && \
                 du "/build-bins/"* --bytes --human-readable --time --time-style="full-iso" --summarize
                #Rename
-                find "/build-bins/" -type f ! -name "*.txt" -exec  bash -c '\''mv "$0" "${0}-riscv64-Linux"'\'' {} \; 2>/dev/null
+                find "/build-bins/" -type f ! -name "*.txt" -exec  bash -c '\''mv "$0" "${0}-aarch64-Linux"'\'' {} \; 2>/dev/null
                #UPX
                 find "/build-bins/" -type f | xargs realpath | xargs -I {} upx --best "{}" -f --force-overwrite -o"{}.upx" -qq 2>/dev/null
                 popd >/dev/null 2>&1
